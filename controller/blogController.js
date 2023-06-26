@@ -1,4 +1,3 @@
-const { where } = require("sequelize");
 const { sequelize, Blog } = require("../models");
 const { body } = require("express-validator");
 
@@ -6,15 +5,11 @@ const blogPost = async (req, res) => {
   try {
     console.log(req.body);
     const { title, body, author } = req.body;
-
-    if (!title || !body) {
-      return res.status(400).json({ message: "title and body compulsory" });
-    }
     const createdBlog = await Blog.create({
       title,
       body,
       author,
-      user_id: req.user.user.id,
+      user_id: req.user.id,
     });
     res.status(200).json(createdBlog);
   } catch (err) {
@@ -26,7 +21,6 @@ const blogPost = async (req, res) => {
 
 const blogGet = async (req, res) => {
   try {
-    const { user_id } = req.user;
     const getBlog = await Blog.findAll();
     res.status(200).json(getBlog);
   } catch (err) {
@@ -37,40 +31,54 @@ const blogGet = async (req, res) => {
 
 const getBlogbyid = async (req, res) => {
   try {
-    const { user_id } = req.params
-
-    getBlog = await Blog.findOne({ where: { user_id} });
-    if ( Blog.user_id !== req.user.user.id) {
-      return res.status(400).send("Not Found NO post yet");
-    } else {
-      res.status(200).json(getBlog);
-     }
+    const { user } = req;
+    getBlog = await Blog.findAll({ where: { user_id: user.id } });
+    res.status(200).json(getBlog);
   } catch (err) {
     console.log(err);
     return res.status(500).json({ error: "server err" });
   }
 };
 
-const blogUpdate = async (req, res) => { 
+const blogUpdate = async (req, res) => {
   try {
-    const { user_id } = req.params;
-    const { title, user } = req.body;
-    console.log("user",user)
-
-    await Blog.update({ title, body }, { where: { user_id } });
-    console.log(user_id);
-    //console.log(blogUp)
-    res.status(200).send(`updated with user iD ${user_id}`);
+    const { id } = req.params;
+    const { title, body } = req.body;
+    const { user } = req;
+    const getblog = await Blog.findOne({ where: { id } });
+    if (!getblog) {
+      return res.status(404).send("Not Found");
+    } else {
+      res.status(200).json(getblog);
+    }
+    await Blog.update({ title, body }, { where: { user_id: user.id } });
+    if (user_id !== user.id) {
+      return res.status(401).json({ error: "unathorized access" });
+    } else {
+      res.status(200).send(`updated with user iD ${user_id}`);
+    }
   } catch (err) {
     console.log(err);
-    return res.status(500).json({ error: "server error" });
+    res.status(500).json({ error: "server error" });
   }
 };
 
 const blogDelete = async (req, res) => {
-  const { user_id } = req.user
-  await Blog.destroy({ where: {user_id} });
-  res.status(200).json({ message: "DELETED" }); 
+  const { id } = req.params;
+  const { user } = req;
+  const getblog = await Blog.findOne({ where: { id } });
+  if (!getblog) {
+    return res.status(404).json({ message: "Not Found" });
+  } else {
+    res.status(200).json(getblog);
+  }
+
+  await Blog.destroy({ where: { user_id: user.id } });
+  if (user_id !== user.id) {
+    res.status(401).send("unauthorized access");
+  } else {
+    res.status(200).json({ message: "DELETED" });
+  }
 };
 
 module.exports = {

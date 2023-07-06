@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 const { sequelize, User } = require("../models");
 const jwt = require("jsonwebtoken");
 
-const userRegister = async (req, res) => {
+const userRegister = async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body;
     const alreadyExist = await User.findOne({ where: { email } });
@@ -20,7 +20,8 @@ const userRegister = async (req, res) => {
     });
     res.status(200).json(regUser);
   } catch (err) {
-    res.status(500).json({ error: "server error" });
+    res.status(401).json({ error: "server error" });
+    next(res);
   }
 };
 
@@ -31,7 +32,7 @@ const userLogin = async (req, res) => {
     if (user && (await bcrypt.compare(password, user.password))) {
       const accessToken = jwt.sign(
         {
-          name: user.name,
+          role: user.role,
           email: user.email,
           id: user.id,
         },

@@ -1,3 +1,4 @@
+const { where } = require("sequelize");
 const { sequelize, Blog } = require("../models");
 const { body } = require("express-validator");
 
@@ -19,7 +20,7 @@ const blogPost = async (req, res) => {
   }
 };
 
-const blogGet = async (req, res) => {
+const getAllBlog = async (req, res) => {
   try {
     const getBlog = await Blog.findAll();
     res.status(200).json(getBlog);
@@ -29,7 +30,7 @@ const blogGet = async (req, res) => {
   }
 };
 
-const getBlogbyid = async (req, res) => {
+const getBlog = async (req, res) => {
   try {
     const { user } = req;
     getBlog = await Blog.findAll({ where: { user_id: user.id } });
@@ -46,17 +47,13 @@ const blogUpdate = async (req, res) => {
     const { title, body } = req.body;
     const { user } = req;
     const getblog = await Blog.findOne({ where: { id } });
-    if (!getblog) {
-      return res.status(404).send("Not Found");
-    } else {
-      res.status(200).json(getblog);
-    }
+    if (!getblog) return res.status(404).send("Not Found");
+
+    if (getBlog.user_id !== user.id)
+      res.status(401).send("unauthorized access");
     await Blog.update({ title, body }, { where: { user_id: user.id } });
-    if (user_id !== user.id) {
-      return res.status(401).json({ error: "unathorized access" });
-    } else {
-      res.status(200).send(`updated with user iD ${user_id}`);
-    }
+
+    res.status(200).json(`updated with user iD `);
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "server error" });
@@ -64,28 +61,24 @@ const blogUpdate = async (req, res) => {
 };
 
 const blogDelete = async (req, res) => {
-  const { id } = req.params;
-  const { user } = req;
-  const getblog = await Blog.findOne({ where: { id } });
-  if (!getblog) {
-    return res.status(404).json({ message: "Not Found" });
-  } else {
-    res.status(200).json(getblog);
-  }
+  try {
+    const { id } = req.params;
+    const { user } = req;
+    const getBlog = await Blog.findOne({ where: { id } });
+    if (!getBlog) return res.status(404).json({ message: "Not Found" });
 
-  await Blog.destroy({ where: { user_id: user.id } });
-  if (user_id !== user.id) {
-    res.status(401).send("unauthorized access");
-  } else {
+    if (getBlog.user_id !== user.id || user.role === "admin")
+      res.status(401).send("unauthorized access");
+    await Blog.destroy({ where: { user_id: user.id } });
+
     res.status(200).json({ message: "DELETED" });
-  }
+  } catch (err) {}
 };
 
 module.exports = {
+  getAllBlog,
   blogPost,
-  blogGet,
-  blogPost,
-  getBlogbyid,
+  getBlog,
   blogUpdate,
   blogDelete,
 };
